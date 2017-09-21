@@ -61,7 +61,10 @@ RUN git clone --recursive https://github.com/tensorflow/models.git /root/models
 RUN cd /root/models/syntaxnet/tensorflow && echo | ./configure
 RUN cd /root/models/syntaxnet && bazel test syntaxnet/... util/utf8/...
 
+# Download custom conll build script
+RUN cd /root/models/syntaxnet/ && curl -O https://raw.githubusercontent.com/rpbeltran/syntaxnet-docker/master/build_conll.sh
+
 WORKDIR /root/models/syntaxnet/
 
-CMD /root/models/syntaxnet/syntaxnet/demo.sh
+CMD /root/models/syntaxnet/build_conll.sh
 
