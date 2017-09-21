@@ -1,6 +1,7 @@
-[![Docker Pulls](https://img.shields.io/docker/pulls/brianlow/syntaxnet.svg?style=flat-square)](https://hub.docker.com/r/brianlow/syntaxnet/)
-[![Docker Stars](https://img.shields.io/docker/stars/brianlow/syntaxnet.svg?style=flat-square)](https://hub.docker.com/r/brianlow/syntaxnet/)
 
+Modified Docker container from [Brian Low's Syntaxnet Dockerfile](https://github.com/brianlow/syntaxnet-docker).
+
+Compared to Brian Low's, this repository uses a more up to date version of Ubuntu base, and provides a modified demo script which outputs information in CONLL format instead of an ASCII Tree. This is makes the output substantially easier to parse, and removes another source of latency.
 
 Syntaxnet
 =========
