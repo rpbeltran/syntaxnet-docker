@@ -1,56 +1,70 @@
-#!/bin/bash
+FROM ubuntu:16.04
 
-# ==============================================================================
-# Copyright 2016 Google Inc. All Rights Reserved.
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+MAINTAINER Brian Low <brian.low22@gmail.com>
 
-# A script that runs a tokenizer, a part-of-speech tagger and a dependency
-# parser on an English text file, with one sentence per line.
-# Example usage:
-#  echo "Parsey McParseface is my favorite parser!" | syntaxnet/demo.sh
+RUN apt-get update && apt-get install -y \
+        build-essential \
+        curl \
+        g++ \
+        git \
+        libfreetype6-dev \
+        libpng12-dev \
+        libzmq3-dev \
+        openjdk-8-jdk \
+        pkg-config \
+        python-dev \
+        python-numpy \
+        python-pip \
+        software-properties-common \
+        swig \
+        unzip \
+        zip \
+        zlib1g-dev \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Notice: This file has been modified by Ryan Beltran on 9/21/2017. 
-# Changes include:
-#   remove calls to conll2tree
-#   removed support for reading conll inputs
+RUN update-ca-certificates -f
+
+# Set up Bazel.
+
+# Running bazel inside a `docker build` command causes trouble, cf:
+#   https://github.com/bazelbuild/bazel/issues/134
+# The easiest solution is to set up a bazelrc file forcing --batch.
+RUN echo "startup --batch" >>/root/.bazelrc
+# Similarly, we need to workaround sandboxing issues:
+#   https://github.com/bazelbuild/bazel/issues/418
+RUN echo "build --spawn_strategy=standalone --genrule_strategy=standalone" \
+    >>/root/.bazelrc
+ENV BAZELRC /root/.bazelrc
 
 
+# Install the most recent bazel release.
+WORKDIR /
 
+RUN mkdir /bazel
+RUN cd /bazel
+RUN curl -fSsL -O https://github.com/bazelbuild/bazel/releases/download/0.2.2/bazel-0.2.2-installer-linux-x86_64.sh
+RUN chmod +x bazel-*.sh
+RUN ./bazel-0.2.2-installer-linux-x86_64.sh
+RUN cd /
+RUN rm -f /bazel/bazel-0.2.2-installer-linux-x86_64.sh
 
-PARSER_EVAL=bazel-bin/syntaxnet/parser_eval
-MODEL_DIR=syntaxnet/models/parsey_mcparseface
+# Syntaxnet dependencies
 
-$PARSER_EVAL \
-  --input=stdin \
-  --output=stdout-conll \
-  --hidden_layer_sizes=64 \
-  --arg_prefix=brain_tagger \
-  --graph_builder=structured \
-  --task_context=$MODEL_DIR/context.pbtxt \
-  --model_path=$MODEL_DIR/tagger-params \
-  --slim_model \
-  --batch_size=1024 \
-  --alsologtostderr \
-   | \
-  $PARSER_EVAL \
-  --input=stdin-conll \
-  --output=stdout-conll \
-  --hidden_layer_sizes=512,512 \
-  --arg_prefix=brain_parser \
-  --graph_builder=structured \
-  --task_context=$MODEL_DIR/context.pbtxt \
-  --model_path=$MODEL_DIR/parser-params \
-  --slim_model \
-  --batch_size=1024 \
-  --alsologtostderr \
+RUN pip install -U protobuf==3.0.0b2
+RUN pip install asciitree
 
+# Download and build Syntaxnet
+
+RUN git clone --recursive https://github.com/tensorflow/models.git /root/models
+RUN cd /root/models/syntaxnet/tensorflow && echo | ./configure
+RUN cd /root/models/syntaxnet && bazel test syntaxnet/... util/utf8/...
+
+# Download custom conll build script
+RUN cd /root/models/syntaxnet/ && curl -O https://raw.githubusercontent.com/rpbeltran/syntaxnet-docker/master/build_conll.sh
+
+WORKDIR /root/models/syntaxnet/
+
+CMD /root/models/syntaxnet/build_conll.sh
 
