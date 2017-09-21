@@ -9,6 +9,14 @@ Syntaxnet
 [Google's SyntaxNet](https://github.com/tensorflow/models/tree/master/syntaxnet) Parser and POS tagger.
 
 
+Setup 
+-----
+
+```shell
+curl -O https://raw.githubusercontent.com/rpbeltran/syntaxnet-docker/master/Dockerfile
+docker build .
+```
+
 Usage
 -----
 
